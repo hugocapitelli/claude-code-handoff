@@ -105,8 +105,8 @@ fs.chmodSync(path.join(CLAUDE_DIR, 'hooks', 'session-cleanup.sh'), 0o755);
 
 if (isReinstall) {
   let content = fs.readFileSync(monitorPath, 'utf-8');
-  if (savedThreshold && savedThreshold !== '90') {
-    content = content.replace('CLAUDE_CONTEXT_THRESHOLD:-90', `CLAUDE_CONTEXT_THRESHOLD:-${savedThreshold}`);
+  if (savedThreshold && savedThreshold !== '80') {
+    content = content.replace('CLAUDE_CONTEXT_THRESHOLD:-80', `CLAUDE_CONTEXT_THRESHOLD:-${savedThreshold}`);
     ok(`Preserved threshold: ${CYAN}${savedThreshold}%${NC}`);
   }
   if (savedMaxContext && savedMaxContext !== '200000') {

@@ -105,8 +105,8 @@ chmod +x "$CLAUDE_DIR/hooks/context-monitor.sh"
 chmod +x "$CLAUDE_DIR/hooks/session-cleanup.sh"
 
 if [ "$IS_REINSTALL" = true ]; then
-  if [ -n "$SAVED_THRESHOLD" ] && [ "$SAVED_THRESHOLD" != "90" ]; then
-    sed -i.bak "s/CLAUDE_CONTEXT_THRESHOLD:-90/CLAUDE_CONTEXT_THRESHOLD:-${SAVED_THRESHOLD}/" "$CLAUDE_DIR/hooks/context-monitor.sh"
+  if [ -n "$SAVED_THRESHOLD" ] && [ "$SAVED_THRESHOLD" != "80" ]; then
+    sed -i.bak "s/CLAUDE_CONTEXT_THRESHOLD:-80/CLAUDE_CONTEXT_THRESHOLD:-${SAVED_THRESHOLD}/" "$CLAUDE_DIR/hooks/context-monitor.sh"
     rm -f "$CLAUDE_DIR/hooks/context-monitor.sh.bak"
     ok "Preserved threshold: ${CYAN}${SAVED_THRESHOLD}%${RESET}"
   fi

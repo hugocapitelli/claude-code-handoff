@@ -12,8 +12,11 @@ fi
 # Contexto máximo do Claude Code (tokens). Varia por plano:
 # Pro/Max/Team: 200000 | Enterprise: 500000 | Custom: qualquer valor
 MAX_CONTEXT_TOKENS=${CLAUDE_MAX_CONTEXT:-200000}
-# Threshold configurável (% do contexto). 90% padrão — maximiza uso do contexto
-THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-90}
+# Threshold configurável (% do input_tokens medido).
+# 80% é o padrão seguro — o contexto real (input + output + overhead)
+# é ~10-15% maior do que o input_tokens reportado na API.
+# Com 80%, o hook dispara quando o contexto real está ~90-95%.
+THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-80}
 THRESHOLD_TOKENS=$((MAX_CONTEXT_TOKENS * THRESHOLD_PERCENT / 100))
 
 INPUT=$(cat)
@@ -29,9 +32,9 @@ if [ -z "$SESSION_ID" ]; then
   exit 0
 fi
 
-# Extrai o input_tokens da última mensagem do assistente no JSONL.
-# Isso reflete o tamanho REAL do contexto que o Claude está usando.
-# Campos: input_tokens + cache_read_input_tokens + cache_creation_input_tokens = total input
+# Extrai o total de tokens da última mensagem do assistente no JSONL.
+# input_tokens + cache_read_input_tokens + cache_creation_input_tokens = total input medido
+# output_tokens = tokens gerados nessa resposta (somados para melhor estimativa)
 CURRENT_TOKENS=0
 if command -v python3 &>/dev/null; then
   CURRENT_TOKENS=$(python3 -c "
@@ -43,7 +46,9 @@ with open('$TRANSCRIPT_PATH') as f:
             e = json.loads(line)
             if e.get('type') == 'assistant':
                 u = e.get('message', {}).get('usage', {})
-                t = u.get('input_tokens', 0) + u.get('cache_read_input_tokens', 0) + u.get('cache_creation_input_tokens', 0)
+                inp = u.get('input_tokens', 0) + u.get('cache_read_input_tokens', 0) + u.get('cache_creation_input_tokens', 0)
+                out = u.get('output_tokens', 0)
+                t = inp + out
                 if t > 0:
                     last = t
         except:
@@ -60,7 +65,9 @@ for (const line of lines) {
     const e = JSON.parse(line);
     if (e.type === 'assistant' && e.message?.usage) {
       const u = e.message.usage;
-      const t = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      const inp = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      const out = (u.output_tokens || 0);
+      const t = inp + out;
       if (t > 0) last = t;
     }
   } catch {}
