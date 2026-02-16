@@ -161,7 +161,7 @@ The biggest risk with handoffs is **forgetting to save**. You're deep in a task,
 
 ### How It Works
 
-A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) runs after every Claude response (Stop event). It checks the transcript file size against a configurable threshold. When the threshold is exceeded, it **blocks** Claude's next action and forces an immediate handoff save.
+A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) runs after every Claude response (Stop event). It reads the **actual token count** from Claude's API usage data in the JSONL transcript and compares it against the 200K token context window. When the threshold is exceeded, it **blocks** Claude's next action and forces an immediate handoff save.
 
 ```mermaid
 flowchart TD
@@ -178,18 +178,21 @@ flowchart TD
 
 ### Threshold Configuration
 
-The threshold is configured as a **percentage of the estimated maximum context** (~500KB transcript). This makes it intuitive — you think in terms of "how full is my context?" rather than raw byte counts.
+The threshold is configured as a **percentage of the 200K token context window**. The hook reads the **actual token count** from Claude's API usage data in the transcript — no guesswork, no byte-to-token estimation.
 
 | Preset | Value | Triggers at | Best for |
 |--------|-------|-------------|----------|
-| **90% (default)** | `THRESHOLD_PERCENT=90` | ~450KB | Maximizing context usage |
-| **80%** | `THRESHOLD_PERCENT=80` | ~400KB | Balance between space and safety |
-| **75%** | `THRESHOLD_PERCENT=75` | ~375KB | Short sessions, early handoff |
+| **90% (default)** | `THRESHOLD_PERCENT=90` | 180K tokens | Maximizing context usage |
+| **80%** | `THRESHOLD_PERCENT=80` | 160K tokens | Balance between space and safety |
+| **75%** | `THRESHOLD_PERCENT=75` | 150K tokens | Short sessions, early handoff |
 
-The calculation is straightforward:
+The calculation uses real data:
 ```
-MAX_CONTEXT_SIZE = 500000  (500KB — estimated max transcript)
-THRESHOLD = MAX_CONTEXT_SIZE × THRESHOLD_PERCENT / 100
+MAX_CONTEXT_TOKENS = 200000   (Claude Code's context window)
+THRESHOLD = MAX_CONTEXT_TOKENS × THRESHOLD_PERCENT / 100
+
+# The hook reads input_tokens from the last assistant message in the JSONL
+# This is the ACTUAL context size — not an estimate
 ```
 
 ### Three Ways to Configure
@@ -572,7 +575,7 @@ A: The commands automatically summarize older sessions into a "Prior Sessions Su
 A: Absolutely. They're plain markdown. You can add notes, reorder next steps, or clean up history.
 
 **Q: How does the auto-handoff threshold work?**
-A: The threshold is a percentage of the estimated maximum transcript size (~500KB). At 90% (default), the hook triggers when the transcript reaches ~450KB. You can set any value from 1-100 via env var (`CLAUDE_CONTEXT_THRESHOLD=80`) or the `/auto-handoff` command.
+A: The threshold is a percentage of Claude Code's 200K token context window. At 90% (default), the hook triggers at 180K tokens. The hook reads the **actual token count** from Claude's API usage data — not file size estimates. You can set any value from 1-100 via env var (`CLAUDE_CONTEXT_THRESHOLD=80`) or the `/auto-handoff` command.
 
 **Q: Can I disable auto-handoff?**
 A: Yes. Run `/auto-handoff` and select "Disable", or manually create the file `.claude/hooks/.auto-handoff-disabled`. Delete the file to re-enable.
