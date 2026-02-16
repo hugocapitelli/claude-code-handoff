@@ -9,8 +9,9 @@ if [ -f "$SCRIPT_DIR/.auto-handoff-disabled" ]; then
   exit 0
 fi
 
-# Contexto máximo do Claude Code (tokens)
-MAX_CONTEXT_TOKENS=200000
+# Contexto máximo do Claude Code (tokens). Varia por plano:
+# Pro/Max/Team: 200000 | Enterprise: 500000 | Custom: qualquer valor
+MAX_CONTEXT_TOKENS=${CLAUDE_MAX_CONTEXT:-200000}
 # Threshold configurável (% do contexto). 90% padrão — maximiza uso do contexto
 THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-90}
 THRESHOLD_TOKENS=$((MAX_CONTEXT_TOKENS * THRESHOLD_PERCENT / 100))

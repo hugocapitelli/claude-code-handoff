@@ -178,19 +178,34 @@ flowchart TD
     H --> I["User: /clear → /resume"]
 ```
 
+### Plan Selection
+
+The context window varies by Claude plan. The hook adapts automatically based on your plan configuration:
+
+| Plan | Context Window | Value |
+|------|---------------|-------|
+| **Pro / Max / Team** | 200K tokens | `MAX_CONTEXT_TOKENS=200000` (default) |
+| **Enterprise** | 500K tokens | `MAX_CONTEXT_TOKENS=500000` |
+| **Custom** | Any value | Set via `/auto-handoff` or env var |
+
+Configure your plan via the `/auto-handoff` wizard or set the environment variable:
+```bash
+export CLAUDE_MAX_CONTEXT=500000  # Enterprise
+```
+
 ### Threshold Configuration
 
-The threshold is configured as a **percentage of the 200K token context window**. The hook reads the **actual token count** from Claude's API usage data in the transcript — no guesswork, no byte-to-token estimation.
+The threshold is configured as a **percentage of your plan's context window**. The hook reads the **actual token count** from Claude's API usage data in the transcript — no guesswork, no byte-to-token estimation.
 
-| Preset | Value | Triggers at | Best for |
-|--------|-------|-------------|----------|
-| **90% (default)** | `THRESHOLD_PERCENT=90` | 180K tokens | Maximizing context usage |
-| **80%** | `THRESHOLD_PERCENT=80` | 160K tokens | Balance between space and safety |
-| **75%** | `THRESHOLD_PERCENT=75` | 150K tokens | Short sessions, early handoff |
+| Preset | Value | Triggers at (200K) | Triggers at (500K) | Best for |
+|--------|-------|---------------------|---------------------|----------|
+| **90% (default)** | `THRESHOLD_PERCENT=90` | 180K tokens | 450K tokens | Maximizing context usage |
+| **80%** | `THRESHOLD_PERCENT=80` | 160K tokens | 400K tokens | Balance between space and safety |
+| **75%** | `THRESHOLD_PERCENT=75` | 150K tokens | 375K tokens | Short sessions, early handoff |
 
 The calculation uses real data:
 ```
-MAX_CONTEXT_TOKENS = 200000   (Claude Code's context window)
+MAX_CONTEXT_TOKENS = 200000 (or 500000 for Enterprise, or custom)
 THRESHOLD = MAX_CONTEXT_TOKENS × THRESHOLD_PERCENT / 100
 
 # The hook reads input_tokens from the last assistant message in the JSONL
@@ -199,31 +214,39 @@ THRESHOLD = MAX_CONTEXT_TOKENS × THRESHOLD_PERCENT / 100
 
 ### Three Ways to Configure
 
-**1. Environment variable** (per-session override):
+**1. Environment variables** (per-session override):
 ```bash
-# Trigger at 80% instead of the default
-export CLAUDE_CONTEXT_THRESHOLD=80
+export CLAUDE_MAX_CONTEXT=500000    # Enterprise plan (500K)
+export CLAUDE_CONTEXT_THRESHOLD=80  # Trigger at 80%
 ```
 
 **2. Interactive wizard** (`/auto-handoff` command):
 ```
 you:    /auto-handoff
-claude: Auto-handoff is ENABLED (threshold: 90%). What would you like to do?
-        1. Disable
-        2. Adjust threshold
+claude: Auto-handoff is DISABLED (plan: Pro/Max/Team, threshold: 90%).
+        What would you like to do?
+        1. Enable
+        2. Enable with custom configuration
 
-you:    [selects "Adjust threshold"]
+you:    [selects "Enable with custom configuration"]
+claude: Which is your Claude plan?
+        1. Pro / Max / Team — 200K tokens
+        2. Enterprise — 500K tokens
+        3. Other — Type a custom value
+
+you:    [selects plan]
 claude: Which threshold do you want?
-        1. 90% (Recommended) — Default, maximizes context usage
-        2. 80% — Balance between space and safety
-        3. 75% — Short sessions, saves handoff earlier
+        1. 90% (Recommended)
+        2. 80%
+        3. 75%
         4. Other — Type a custom value
 ```
 
 **3. Edit the script directly**:
 ```bash
-# In .claude/hooks/context-monitor.sh, change the default:
-THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-90}  # change 90 to your value
+# In .claude/hooks/context-monitor.sh, change the defaults:
+MAX_CONTEXT_TOKENS=${CLAUDE_MAX_CONTEXT:-200000}   # change 200000 to your value
+THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-90}   # change 90 to your value
 ```
 
 ### Safety Mechanisms
