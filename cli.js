@@ -62,6 +62,8 @@ copyFile('hooks/context-monitor.sh', path.join(CLAUDE_DIR, 'hooks', 'context-mon
 copyFile('hooks/session-cleanup.sh', path.join(CLAUDE_DIR, 'hooks', 'session-cleanup.sh'));
 fs.chmodSync(path.join(CLAUDE_DIR, 'hooks', 'context-monitor.sh'), 0o755);
 fs.chmodSync(path.join(CLAUDE_DIR, 'hooks', 'session-cleanup.sh'), 0o755);
+// Auto-handoff disabled by default (beta feature)
+fs.writeFileSync(path.join(CLAUDE_DIR, 'hooks', '.auto-handoff-disabled'), '');
 
 // 5. Configure hooks in settings.json
 console.log(`  ${YELLOW}[5/10]${NC} Configuring hooks in settings.json...`);
@@ -177,9 +179,8 @@ console.log(`    ${CYAN}/switch-context${NC}       Switch workstream`);
 console.log(`    ${CYAN}/delete-handoff${NC}       Delete handoff(s)`);
 console.log(`    ${CYAN}/auto-handoff${NC}         Toggle auto-handoff on/off`);
 console.log('');
-console.log('  Auto-handoff:');
-console.log('    Context monitor hook installed (triggers at 90% of context)');
-console.log(`    Use ${CYAN}/auto-handoff${NC} to enable/disable or adjust threshold`);
+console.log(`  Auto-handoff: ${YELLOW}(beta — disabled by default)${NC}`);
+console.log(`    Use ${CYAN}/auto-handoff${NC} to enable and configure threshold`);
 console.log('');
 console.log('  Files:');
 console.log('    .claude/commands/     6 command files');
