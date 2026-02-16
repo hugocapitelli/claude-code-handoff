@@ -1,7 +1,7 @@
 {
   "name": "claude-code-handoff",
-  "version": "1.2.1",
-  "description": "Session continuity for Claude Code — 4 slash commands to save, resume, and switch workstreams across /clear",
+  "version": "1.3.0",
+  "description": "Session continuity for Claude Code — 5 slash commands to save, resume, delete, and switch workstreams across /clear",
   "bin": "./cli.js",
   "files": [
     "cli.js",

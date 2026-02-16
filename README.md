@@ -10,11 +10,33 @@
 
 ## The Problem
 
-Claude Code loses all context when you `/clear` or start a new session. Long-running work gets fragmented. You waste tokens re-explaining what you were doing. Switching between features means losing track of the other one.
+Claude Code operates within a **200K token context window**. As you work, every message, tool call, file read, and response consumes tokens. Eventually, the context fills up — and that's where things break.
+
+### With auto-compact ON (default)
+
+When context usage approaches the limit, Claude Code triggers **auto-compact**: it summarizes the entire conversation into a compressed buffer of approximately **33K tokens**. In theory, this lets you keep working without interruption. In practice, the summarization is **lossy** — Claude loses critical details:
+
+- Exact file paths and line numbers discussed earlier
+- Decision rationale ("why did we choose approach A over B?")
+- Specific code patterns and variable names
+- Nuanced context about edge cases and constraints
+- What was already tried and failed
+
+The result: Claude starts repeating mistakes, asking questions you already answered, and proposing solutions that were already rejected. Development quality degrades progressively with each compaction cycle.
+
+### With auto-compact OFF
+
+If you disable auto-compact to preserve full-fidelity context, you hit a hard wall: when the 200K window fills up, you **must** `/clear`. Total context loss. You start from absolute zero — re-explaining the project, the architecture, what was done, what's next.
+
+### The real cost
+
+Either way, you lose. Auto-compact gives you a degraded Claude that forgets. Manual clear gives you an amnesiac Claude that knows nothing. Both waste tokens, time, and developer patience.
+
+**This is the problem claude-code-handoff solves.**
 
 ## The Solution
 
-**claude-code-handoff** adds 4 slash commands that give Claude persistent memory:
+Instead of relying on lossy compression or starting from zero, **claude-code-handoff** gives Claude **structured persistent memory** — 5 slash commands that capture exactly what matters and restore it cleanly:
 
 | Command | Description |
 |---------|-------------|
@@ -22,6 +44,9 @@ Claude Code loses all context when you `/clear` or start a new session. Long-run
 | `/resume` | Resume from a saved session — interactive picker |
 | `/save-handoff` | Save with options — choose where and how |
 | `/switch-context <topic>` | Switch between parallel workstreams |
+| `/delete-handoff` | Delete one or more saved handoffs |
+
+The workflow becomes: work until context is full → `/handoff` → `/clear` → `/resume` → continue with full context. No degradation, no amnesia. Just clean handoffs.
 
 Session state is stored in `.claude/handoffs/` (gitignored) — each developer keeps their own context, no conflicts.
 
@@ -34,7 +59,7 @@ cd your-project
 npx claude-code-handoff
 ```
 
-That's it. Open Claude Code and your 4 commands are ready.
+That's it. Open Claude Code and your 5 commands are ready.
 
 ---
 
@@ -133,7 +158,7 @@ graph TD
 
 ```bash
 cd your-project
-npx claude-code-handoff
+npx claude-code-handoff@1.3.0
 ```
 
 ### Option B: curl
@@ -160,7 +185,8 @@ your-project/
     │   ├── handoff.md            ← /handoff (auto-save)
     │   ├── resume.md             ← /resume (interactive picker)
     │   ├── save-handoff.md       ← /save-handoff (wizard)
-    │   └── switch-context.md     ← /switch-context (workstream switch)
+    │   ├── switch-context.md     ← /switch-context (workstream switch)
+    │   └── delete-handoff.md     ← /delete-handoff (remove handoffs)
     ├── rules/
     │   └── session-continuity.md ← Auto-loaded behavioral rules
     └── handoffs/                 ← Session state (gitignored)
@@ -327,7 +353,7 @@ The installer adds a `session-continuity.md` rules file that Claude auto-loads o
 
 - **On session start**: Claude knows `_active.md` exists but doesn't read it unless asked
 - **During work**: Claude proactively reminds you to save after significant milestones
-- **Command awareness**: Claude understands all 4 commands natively
+- **Command awareness**: Claude understands all 5 commands natively
 
 ---
 
@@ -363,7 +389,7 @@ curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff
 ```
 
 The uninstaller:
-- Removes all 4 command files
+- Removes all 5 command files
 - Removes the rules file
 - Preserves handoff data if sessions exist (won't delete your session history)
 - Cleans `.gitignore` entries
@@ -371,7 +397,7 @@ The uninstaller:
 
 Or remove manually:
 ```bash
-rm .claude/commands/{handoff,resume,save-handoff,switch-context}.md
+rm .claude/commands/{handoff,resume,save-handoff,switch-context,delete-handoff}.md
 rm .claude/rules/session-continuity.md
 rm -rf .claude/handoffs/  # ⚠️ deletes all session history
 ```
