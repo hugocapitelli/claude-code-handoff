@@ -1,9 +1,9 @@
 #!/bin/bash
 # claude-code-handoff — Session continuity for Claude Code
-# Install: curl -fsSL https://raw.githubusercontent.com/hugocapitelli/claude-code-handoff/main/install.sh | bash
+# Install: curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff/main/install.sh | bash
 #
 # Or clone and run:
-#   git clone https://github.com/hugocapitelli/claude-code-handoff.git /tmp/claude-code-handoff
+#   git clone https://github.com/eximIA-Ventures/claude-code-handoff.git /tmp/claude-code-handoff
 #   cd /your/project && /tmp/claude-code-handoff/install.sh
 
 set -e
@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-REPO="hugocapitelli/claude-code-handoff"
+REPO="eximIA-Ventures/claude-code-handoff"
 BRANCH="main"
 RAW_BASE="https://raw.githubusercontent.com/$REPO/$BRANCH"
 PROJECT_DIR="$(pwd)"

@@ -1,19 +1,131 @@
 # claude-code-handoff
 
-Session continuity for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Pick up exactly where you left off — across `/clear`, crashes, or context switches.
+> Session continuity for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+> Pick up exactly where you left off — across `/clear`, crashes, or context switches.
 
-## What it does
+[![npm version](https://img.shields.io/npm/v/claude-code-handoff)](https://www.npmjs.com/package/claude-code-handoff)
+[![license](https://img.shields.io/npm/l/claude-code-handoff)](./LICENSE)
 
-Adds 4 slash commands to any Claude Code project:
+---
+
+## The Problem
+
+Claude Code loses all context when you `/clear` or start a new session. Long-running work gets fragmented. You waste tokens re-explaining what you were doing. Switching between features means losing track of the other one.
+
+## The Solution
+
+**claude-code-handoff** adds 4 slash commands that give Claude persistent memory:
 
 | Command | Description |
 |---------|-------------|
-| `/handoff` | Auto-save session state (no wizard, just save and go) |
-| `/resume` | Resume from a saved session (interactive wizard) |
-| `/save-handoff` | Save session state with options (interactive wizard) |
+| `/handoff` | Auto-save session state — no questions asked |
+| `/resume` | Resume from a saved session — interactive picker |
+| `/save-handoff` | Save with options — choose where and how |
 | `/switch-context <topic>` | Switch between parallel workstreams |
 
-Session state is stored in `.claude/handoffs/` (gitignored by default) so each developer keeps their own context.
+Session state is stored in `.claude/handoffs/` (gitignored) — each developer keeps their own context, no conflicts.
+
+---
+
+## Quick Start
+
+```bash
+cd your-project
+npx claude-code-handoff
+```
+
+That's it. Open Claude Code and your 4 commands are ready.
+
+---
+
+## How It Works
+
+### Core Flow
+
+```mermaid
+graph LR
+    A[Work in Claude Code] --> B["/handoff"]
+    B --> C[State saved to _active.md]
+    C --> D["/clear"]
+    D --> E[New session]
+    E --> F["/resume"]
+    F --> G[Full context restored]
+    G --> A
+```
+
+### The `/handoff` Command (Auto-Save)
+
+No wizard, no questions. Claude analyzes the conversation and saves everything automatically.
+
+```mermaid
+flowchart TD
+    A["/handoff"] --> B[Analyze conversation]
+    B --> C{_active.md exists?}
+    C -->|Yes| D{Same workstream?}
+    C -->|No| F[Create new _active.md]
+    D -->|Yes| E[Append session to existing]
+    D -->|No| G[Archive old → Create new]
+    E --> H["✅ Handoff saved. Type /clear then /resume"]
+    F --> H
+    G --> H
+```
+
+### The `/resume` Command
+
+Interactive wizard that shows all available sessions and lets you pick one.
+
+```mermaid
+flowchart TD
+    A["/resume"] --> B[Scan handoffs/]
+    B --> C{Handoffs found?}
+    C -->|No| D["No handoffs found. Use /handoff to create one."]
+    C -->|Yes| E[Present interactive picker]
+    E --> F[User selects session]
+    F --> G[Load full handoff]
+    G --> H[Read key files for context]
+    H --> I[Present summary + next steps]
+    I --> J[Wait for user instruction]
+```
+
+### The `/switch-context` Command
+
+Manage parallel workstreams without losing state.
+
+```mermaid
+flowchart TD
+    A["/switch-context api-refactor"] --> B[Read current _active.md]
+    B --> C[Archive current → archive/current-slug.md]
+    C --> D{Target exists in archive?}
+    D -->|Yes| E[Load target → _active.md]
+    D -->|No| F[Create fresh _active.md]
+    E --> G[Show target context + next steps]
+    F --> G
+```
+
+### File Architecture
+
+```mermaid
+graph TD
+    subgraph ".claude/handoffs/"
+        A["_active.md<br/><i>Current workstream (like git HEAD)</i>"]
+        subgraph "archive/"
+            B["auth-refactor.md"]
+            C["api-v2.md"]
+            D["bugfix-login.md"]
+        end
+    end
+
+    A <-->|"/switch-context"| B
+    A <-->|"/switch-context"| C
+    A <-->|"/switch-context"| D
+
+    style A fill:#2d5016,stroke:#4ade80,color:#fff
+    style B fill:#1e3a5f,stroke:#60a5fa,color:#fff
+    style C fill:#1e3a5f,stroke:#60a5fa,color:#fff
+    style D fill:#1e3a5f,stroke:#60a5fa,color:#fff
+```
+
+---
 
 ## Install
 
@@ -28,104 +140,259 @@ npx claude-code-handoff
 
 ```bash
 cd your-project
-curl -fsSL https://raw.githubusercontent.com/hugocapitelli/claude-code-handoff/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff/main/install.sh | bash
 ```
 
 ### Option C: clone & run
 
 ```bash
-git clone https://github.com/hugocapitelli/claude-code-handoff.git /tmp/claude-code-handoff
+git clone https://github.com/eximIA-Ventures/claude-code-handoff.git /tmp/claude-code-handoff
 cd your-project
 /tmp/claude-code-handoff/install.sh
 ```
 
-## What gets installed
+### What Gets Installed
 
 ```
 your-project/
 └── .claude/
     ├── commands/
-    │   ├── handoff.md            # /handoff command (auto-save)
-    │   ├── resume.md             # /resume command
-    │   ├── save-handoff.md       # /save-handoff command
-    │   └── switch-context.md     # /switch-context command
+    │   ├── handoff.md            ← /handoff (auto-save)
+    │   ├── resume.md             ← /resume (interactive picker)
+    │   ├── save-handoff.md       ← /save-handoff (wizard)
+    │   └── switch-context.md     ← /switch-context (workstream switch)
     ├── rules/
-    │   └── session-continuity.md # Auto-loaded rules for Claude
-    └── handoffs/                 # Session state (gitignored)
-        ├── _active.md            # Current workstream
-        └── archive/              # Paused workstreams
+    │   └── session-continuity.md ← Auto-loaded behavioral rules
+    └── handoffs/                 ← Session state (gitignored)
+        ├── _active.md            ← Current workstream
+        └── archive/              ← Paused workstreams
 ```
 
 The installer also:
+- Creates the full `.claude/handoffs/archive/` directory structure
 - Adds `.claude/handoffs/` to `.gitignore`
 - Adds a `Session Continuity` section to `.claude/CLAUDE.md` (creates one if missing)
 
-## Usage
+---
 
-### Quick save before clearing
+## Usage Examples
 
-```
-> /handoff
-# Claude auto-saves current context to .claude/handoffs/_active.md
-> /clear
-```
-
-### Save with options
+### Daily workflow
 
 ```
-> /save-handoff
-# Interactive wizard: update active, save as new context, or replace
+you:    [work on feature for a while]
+you:    /handoff
+claude: Handoff saved. 5 actions recorded, 3 next steps.
+        You can now type /clear to free context.
+you:    /clear
+
+        ── new session ──
+
+you:    /resume
+claude: ## Resuming session
+        **Workstream:** auth-refactor
+        **Last updated:** 2026-02-16
+        ### Last session summary
+        - Implemented JWT middleware in src/auth/middleware.ts
+        - Added refresh token rotation logic
+        - Fixed CORS headers for token endpoint
+        ### Next steps
+        1. Add unit tests for token rotation
+        2. Update API docs for new auth endpoints
+        3. Test with frontend login flow
+        What would you like to do?
 ```
 
-### Resume next session
+### Switching between features
 
 ```
-> /resume
-# Interactive wizard shows available sessions
-# Select one → Claude loads full context and shows next steps
+you:    /switch-context payments-v2
+claude: ## Context switched
+        **From:** auth-refactor → archived
+        **To:** payments-v2
+        ### State
+        - Last worked on Stripe webhook handler
+        - Next: add idempotency keys
+        What would you like to do?
 ```
 
-### Switch workstreams
+### Saving with options
 
 ```
-> /switch-context auth-refactor
-# Archives current session, loads auth-refactor context
+you:    /save-handoff
+claude: Where should this session's handoff be saved?
+        1. Update active (auth-refactor)
+        2. Save as new context
+        3. Replace active
 ```
 
-## How it works
+---
 
-The handoff file (`.claude/handoffs/_active.md`) captures:
+## What Gets Captured
 
-- **Active Workstream** — what you're working on
-- **Active Agent(s)** — which agents/personas are active
-- **What Was Done** — session-by-session log of completed work
-- **What's Next** — prioritized pending items
-- **Key Files** — important files for context reload
-- **Decisions Registry** — architectural decisions made
+The handoff file records everything Claude needs to resume cold:
 
-When you `/resume`, Claude reads this file and presents a summary so you can continue exactly where you left off.
+| Section | Purpose |
+|---------|---------|
+| **Active Workstream** | What you're working on (name + description) |
+| **Active Agent(s)** | Any personas active (e.g., @dev, @architect) |
+| **What Was Done** | Session-by-session log with dates |
+| **What's Next** | Prioritized, actionable pending items |
+| **Key Files** | Files to read for context reload |
+| **Current Document** | The main file being worked on |
+| **Decisions Registry** | Architectural/design decisions with rationale |
 
-The `_active.md` file acts like `HEAD` in git — it points to your current workstream. The `archive/` folder holds paused workstreams you can switch to anytime with `/switch-context`.
+### Session History
+
+Each `/handoff` or `/save-handoff` appends a new session entry. History is preserved — you can see the full timeline of work across sessions:
+
+```markdown
+## What Was Done
+
+### Session 3 (2026-02-16)
+- Added rate limiting to API endpoints
+- Fixed memory leak in WebSocket handler
+
+### Session 2 (2026-02-15)
+- Implemented JWT refresh token rotation
+- Added CORS configuration
+
+### Session 1 (2026-02-14)
+- Set up Express server with TypeScript
+- Created initial route structure
+```
+
+---
+
+## Architecture
+
+### Design Principles
+
+1. **`_active.md` is like `HEAD` in git** — it always points to your current workstream. No need to remember filenames.
+2. **Archive is like branches** — paused workstreams live in `archive/`, ready to be loaded anytime.
+3. **Append-only history** — sessions are never deleted, only appended. You can always trace what happened.
+4. **Gitignored by default** — each developer has their own session state, no merge conflicts.
+5. **Zero dependencies** — the installer is pure bash/Node.js, the commands are plain markdown.
+
+### Command Comparison
+
+```mermaid
+graph TD
+    subgraph "Quick Save"
+        H["/handoff"]
+        H --> H1["No wizard"]
+        H --> H2["Auto-detects workstream"]
+        H --> H3["Appends or creates"]
+    end
+
+    subgraph "Save with Options"
+        S["/save-handoff"]
+        S --> S1["Interactive wizard"]
+        S --> S2["Choose: update / new / replace"]
+        S --> S3["Name your contexts"]
+    end
+
+    subgraph "Resume"
+        R["/resume"]
+        R --> R1["Lists all sessions"]
+        R --> R2["Shows summary per session"]
+        R --> R3["Loads key files"]
+    end
+
+    subgraph "Switch"
+        SW["/switch-context"]
+        SW --> SW1["Archives current"]
+        SW --> SW2["Loads target"]
+        SW --> SW3["Or creates fresh"]
+    end
+
+    style H fill:#2d5016,stroke:#4ade80,color:#fff
+    style S fill:#1e3a5f,stroke:#60a5fa,color:#fff
+    style R fill:#5c1e8a,stroke:#c084fc,color:#fff
+    style SW fill:#7c2d12,stroke:#fb923c,color:#fff
+```
+
+| | `/handoff` | `/save-handoff` | `/resume` | `/switch-context` |
+|---|---|---|---|---|
+| **When** | Before `/clear` | When you need options | Start of session | Mid-session |
+| **Interactive** | No | Yes (wizard) | Yes (picker) | No (with arg) |
+| **Creates files** | Auto | User chooses | No | Auto |
+| **Reads files** | `_active.md` | `_active.md` + `archive/` | All handoffs | `_active.md` + target |
+
+---
+
+## Behavioral Rules
+
+The installer adds a `session-continuity.md` rules file that Claude auto-loads on every session. This gives Claude awareness of the handoff system without you needing to explain it:
+
+- **On session start**: Claude knows `_active.md` exists but doesn't read it unless asked
+- **During work**: Claude proactively reminds you to save after significant milestones
+- **Command awareness**: Claude understands all 4 commands natively
+
+---
 
 ## Uninstall
 
 ```bash
 cd your-project
-curl -fsSL https://raw.githubusercontent.com/hugocapitelli/claude-code-handoff/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff/main/uninstall.sh | bash
 ```
 
-Or manually remove:
+The uninstaller:
+- Removes all 4 command files
+- Removes the rules file
+- Preserves handoff data if sessions exist (won't delete your session history)
+- Cleans `.gitignore` entries
+- Leaves `CLAUDE.md` unchanged (remove the section manually if desired)
+
+Or remove manually:
 ```bash
-rm -rf .claude/commands/handoff.md .claude/commands/resume.md .claude/commands/save-handoff.md .claude/commands/switch-context.md
-rm -rf .claude/rules/session-continuity.md
-rm -rf .claude/handoffs/
+rm .claude/commands/{handoff,resume,save-handoff,switch-context}.md
+rm .claude/rules/session-continuity.md
+rm -rf .claude/handoffs/  # ⚠️ deletes all session history
 ```
+
+---
 
 ## Requirements
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
-- A project directory with (or without) an existing `.claude/` folder
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+- Any project directory (with or without existing `.claude/` folder)
+- Node.js 18+ (for npx install) or curl (for bash install)
+
+---
+
+## FAQ
+
+**Q: Does this work with multiple developers on the same project?**
+A: Yes. Handoff files are gitignored, so each developer has their own session state. No conflicts.
+
+**Q: What happens if I forget to `/handoff` before `/clear`?**
+A: The context is lost for that session. The previous handoff is still there — you just won't have the latest session recorded.
+
+**Q: Can I have unlimited workstreams?**
+A: Yes. The `archive/` folder has no limit. Each workstream is a single `.md` file.
+
+**Q: Does it work with Claude Code agents/personas?**
+A: Yes. The handoff captures which agents are active (e.g., @dev, @architect) so Claude knows the context when resuming.
+
+**Q: What if `_active.md` gets too long?**
+A: The commands automatically summarize older sessions into a "Prior Sessions Summary" when the file exceeds ~300 lines.
+
+**Q: Can I edit the handoff files manually?**
+A: Absolutely. They're plain markdown. You can add notes, reorder next steps, or clean up history.
+
+---
+
+## Contributing
+
+1. Fork this repo
+2. Make your changes
+3. Test by running `./install.sh` in a test project
+4. Open a PR
+
+---
 
 ## License
 
-MIT
+[MIT](./LICENSE) — built by [exímIA Ventures](https://github.com/eximIA-Ventures)

@@ -1,10 +1,17 @@
 {
   "name": "claude-code-handoff",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Session continuity for Claude Code — 4 slash commands to save, resume, and switch workstreams across /clear",
-  "bin": {
-    "claude-code-handoff": "./cli.js"
-  },
+  "bin": "./cli.js",
+  "files": [
+    "cli.js",
+    "install.sh",
+    "uninstall.sh",
+    "commands/",
+    "rules/",
+    "LICENSE",
+    "README.md"
+  ],
   "keywords": [
     "claude",
     "claude-code",
@@ -18,6 +25,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hugocapitelli/claude-code-handoff"
+    "url": "https://github.com/eximIA-Ventures/claude-code-handoff"
   }
 }

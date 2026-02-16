@@ -1,6 +1,6 @@
 #!/bin/bash
 # claude-code-handoff — Uninstall
-# Usage: curl -fsSL https://raw.githubusercontent.com/hugocapitelli/claude-code-handoff/main/uninstall.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff/main/uninstall.sh | bash
 
 set -e
 
