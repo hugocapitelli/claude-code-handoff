@@ -31,7 +31,7 @@ head() { echo -e "\n  ${AMBER}${BOLD}$1${RESET}"; }
 # ─── Banner ───────────────────────────────────────────
 echo ""
 echo -e "  ${AMBER}${BOLD}┌──────────────────────────────────────┐${RESET}"
-echo -e "  ${AMBER}${BOLD}│${RESET}   ${WHITE}${BOLD}claude-code-handoff${RESET}  ${DIM}v1.9${RESET}        ${AMBER}${BOLD}│${RESET}"
+echo -e "  ${AMBER}${BOLD}│${RESET}   ${WHITE}${BOLD}claude-code-handoff${RESET}  ${DIM}v2.1${RESET}        ${AMBER}${BOLD}│${RESET}"
 echo -e "  ${AMBER}${BOLD}│${RESET}   ${GRAY}Session Continuity for Claude Code${RESET}  ${AMBER}${BOLD}│${RESET}"
 echo -e "  ${AMBER}${BOLD}└──────────────────────────────────────┘${RESET}"
 echo ""
@@ -87,7 +87,8 @@ download_file "commands/switch-context.md" "$CLAUDE_DIR/commands/switch-context.
 download_file "commands/handoff.md" "$CLAUDE_DIR/commands/handoff.md"
 download_file "commands/delete-handoff.md" "$CLAUDE_DIR/commands/delete-handoff.md"
 download_file "commands/auto-handoff.md" "$CLAUDE_DIR/commands/auto-handoff.md"
-ok "6 slash commands installed"
+download_file "commands/context-doctor.md" "$CLAUDE_DIR/commands/context-doctor.md"
+ok "7 slash commands installed"
 
 # ─── Rules ────────────────────────────────────────────
 head "Installing rules"
@@ -303,11 +304,9 @@ if [ -f "$CLAUDE_MD" ]; then
       /^# / && !done {
         print
         print ""
-        print "## Session Continuity (MANDATORY)"
+        print "## Session Continuity"
         print ""
-        print "At the START of every session, read `.claude/handoffs/_active.md` to recover context from prior sessions."
-        print "During work, update the handoff proactively after significant milestones."
-        print "Use `/handoff` before `/clear`. Use `/resume` to pick up. Use `/switch-context <topic>` to switch workstreams."
+        print "Use `/resume` to pick up from a previous session. Use `/handoff` before `/clear` to save."
         print ""
         done=1
         next
@@ -323,11 +322,9 @@ else
   cat > "$CLAUDE_MD" << 'CLAUDEMD'
 # Project Rules
 
-## Session Continuity (MANDATORY)
+## Session Continuity
 
-At the START of every session, read `.claude/handoffs/_active.md` to recover context from prior sessions.
-During work, update the handoff proactively after significant milestones.
-Use `/handoff` before `/clear`. Use `/resume` to pick up. Use `/switch-context <topic>` to switch workstreams.
+Use `/resume` to pick up from a previous session. Use `/handoff` before `/clear` to save.
 CLAUDEMD
   ok "CLAUDE.md created"
 fi
@@ -348,17 +345,17 @@ fi
 head "Verifying"
 
 INSTALLED=0
-for f in resume.md save-handoff.md switch-context.md handoff.md delete-handoff.md auto-handoff.md; do
+for f in resume.md save-handoff.md switch-context.md handoff.md delete-handoff.md auto-handoff.md context-doctor.md; do
   [ -f "$CLAUDE_DIR/commands/$f" ] && INSTALLED=$((INSTALLED + 1))
 done
 HOOKS_OK=0
 [ -f "$CLAUDE_DIR/hooks/context-monitor.sh" ] && HOOKS_OK=$((HOOKS_OK + 1))
 [ -f "$CLAUDE_DIR/hooks/session-cleanup.sh" ] && HOOKS_OK=$((HOOKS_OK + 1))
 
-if [ "$INSTALLED" -eq 6 ] && [ "$HOOKS_OK" -eq 2 ]; then
-  ok "${INSTALLED}/6 commands, ${HOOKS_OK}/2 hooks"
+if [ "$INSTALLED" -eq 7 ] && [ "$HOOKS_OK" -eq 2 ]; then
+  ok "${INSTALLED}/7 commands, ${HOOKS_OK}/2 hooks"
 else
-  fail "Partial: ${INSTALLED}/6 commands, ${HOOKS_OK}/2 hooks"
+  fail "Partial: ${INSTALLED}/7 commands, ${HOOKS_OK}/2 hooks"
 fi
 
 # ─── Done ─────────────────────────────────────────────
@@ -374,6 +371,7 @@ echo -e "    ${CYAN}/save-handoff${RESET}       ${GRAY}Save with options${RESET}
 echo -e "    ${CYAN}/switch-context${RESET}     ${GRAY}Switch workstream${RESET}"
 echo -e "    ${CYAN}/delete-handoff${RESET}     ${GRAY}Delete handoff(s)${RESET}"
 echo -e "    ${CYAN}/auto-handoff${RESET}       ${GRAY}Toggle auto-handoff${RESET}"
+echo -e "    ${CYAN}/context-doctor${RESET}     ${GRAY}Diagnose context bloat${RESET}"
 echo ""
 echo -e "  ${WHITE}${BOLD}Auto-handoff:${RESET} ${DIM}beta — disabled by default${RESET}"
 echo -e "  ${GRAY}Run ${CYAN}/auto-handoff${GRAY} inside Claude Code to enable${RESET}"

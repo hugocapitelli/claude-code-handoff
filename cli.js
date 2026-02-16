@@ -26,7 +26,7 @@ const SCRIPT_DIR = __dirname;
 // ─── Banner ───────────────────────────────────────────
 console.log('');
 console.log(`  ${AMBER}${BOLD}┌──────────────────────────────────────┐${NC}`);
-console.log(`  ${AMBER}${BOLD}│${NC}   ${WHITE}${BOLD}claude-code-handoff${NC}  ${DIM}v1.9${NC}        ${AMBER}${BOLD}│${NC}`);
+console.log(`  ${AMBER}${BOLD}│${NC}   ${WHITE}${BOLD}claude-code-handoff${NC}  ${DIM}v2.1${NC}        ${AMBER}${BOLD}│${NC}`);
 console.log(`  ${AMBER}${BOLD}│${NC}   ${GRAY}Session Continuity for Claude Code${NC}  ${AMBER}${BOLD}│${NC}`);
 console.log(`  ${AMBER}${BOLD}└──────────────────────────────────────┘${NC}`);
 console.log('');
@@ -86,7 +86,8 @@ copyFile('commands/switch-context.md', path.join(CLAUDE_DIR, 'commands', 'switch
 copyFile('commands/handoff.md', path.join(CLAUDE_DIR, 'commands', 'handoff.md'));
 copyFile('commands/delete-handoff.md', path.join(CLAUDE_DIR, 'commands', 'delete-handoff.md'));
 copyFile('commands/auto-handoff.md', path.join(CLAUDE_DIR, 'commands', 'auto-handoff.md'));
-ok('6 slash commands installed');
+copyFile('commands/context-doctor.md', path.join(CLAUDE_DIR, 'commands', 'context-doctor.md'));
+ok('7 slash commands installed');
 
 // ─── Rules ────────────────────────────────────────────
 head('Installing rules');
@@ -199,11 +200,9 @@ if (fs.existsSync(gitignorePath)) {
 head('Updating CLAUDE.md');
 
 const claudeMdPath = path.join(CLAUDE_DIR, 'CLAUDE.md');
-const continuityBlock = `## Session Continuity (MANDATORY)
+const continuityBlock = `## Session Continuity
 
-At the START of every session, read \`.claude/handoffs/_active.md\` to recover context from prior sessions.
-During work, update the handoff proactively after significant milestones.
-Use \`/handoff\` before \`/clear\`. Use \`/resume\` to pick up. Use \`/switch-context <topic>\` to switch workstreams.`;
+Use \`/resume\` to pick up from a previous session. Use \`/handoff\` before \`/clear\` to save.`;
 
 if (fs.existsSync(claudeMdPath)) {
   const content = fs.readFileSync(claudeMdPath, 'utf-8');
@@ -237,17 +236,17 @@ if (cleaned > 0) info(`Removed ${cleaned} legacy command(s)`);
 head('Verifying');
 
 let installed = 0;
-for (const f of ['resume.md', 'save-handoff.md', 'switch-context.md', 'handoff.md', 'delete-handoff.md', 'auto-handoff.md']) {
+for (const f of ['resume.md', 'save-handoff.md', 'switch-context.md', 'handoff.md', 'delete-handoff.md', 'auto-handoff.md', 'context-doctor.md']) {
   if (fs.existsSync(path.join(CLAUDE_DIR, 'commands', f))) installed++;
 }
 let hooksOk = 0;
 if (fs.existsSync(path.join(CLAUDE_DIR, 'hooks', 'context-monitor.sh'))) hooksOk++;
 if (fs.existsSync(path.join(CLAUDE_DIR, 'hooks', 'session-cleanup.sh'))) hooksOk++;
 
-if (installed === 6 && hooksOk === 2) {
-  ok(`${installed}/6 commands, ${hooksOk}/2 hooks`);
+if (installed === 7 && hooksOk === 2) {
+  ok(`${installed}/7 commands, ${hooksOk}/2 hooks`);
 } else {
-  fail(`Partial: ${installed}/6 commands, ${hooksOk}/2 hooks`);
+  fail(`Partial: ${installed}/7 commands, ${hooksOk}/2 hooks`);
 }
 
 // ─── Done ─────────────────────────────────────────────
@@ -263,6 +262,7 @@ console.log(`    ${CYAN}/save-handoff${NC}       ${GRAY}Save with options${NC}`)
 console.log(`    ${CYAN}/switch-context${NC}     ${GRAY}Switch workstream${NC}`);
 console.log(`    ${CYAN}/delete-handoff${NC}     ${GRAY}Delete handoff(s)${NC}`);
 console.log(`    ${CYAN}/auto-handoff${NC}       ${GRAY}Toggle auto-handoff${NC}`);
+console.log(`    ${CYAN}/context-doctor${NC}     ${GRAY}Diagnose context bloat${NC}`);
 console.log('');
 console.log(`  ${WHITE}${BOLD}Auto-handoff:${NC} ${DIM}beta — disabled by default${NC}`);
 console.log(`  ${GRAY}Run ${CYAN}/auto-handoff${GRAY} inside Claude Code to enable${NC}`);

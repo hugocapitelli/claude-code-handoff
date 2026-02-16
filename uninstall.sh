@@ -34,6 +34,7 @@ rm -f "$CLAUDE_DIR/commands/save-handoff.md"
 rm -f "$CLAUDE_DIR/commands/switch-context.md"
 rm -f "$CLAUDE_DIR/commands/delete-handoff.md"
 rm -f "$CLAUDE_DIR/commands/auto-handoff.md"
+rm -f "$CLAUDE_DIR/commands/context-doctor.md"
 # Also remove legacy commands if present
 rm -f "$CLAUDE_DIR/commands/auto-handoff-toggle.md"
 # Also remove legacy Portuguese commands if present

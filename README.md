@@ -36,7 +36,7 @@ Either way, you lose. Auto-compact gives you a degraded Claude that forgets. Man
 
 ## The Solution
 
-Instead of relying on lossy compression or starting from zero, **claude-code-handoff** gives Claude **structured persistent memory** — 6 slash commands that capture exactly what matters and restore it cleanly:
+Instead of relying on lossy compression or starting from zero, **claude-code-handoff** gives Claude **structured persistent memory** — 7 slash commands that capture exactly what matters and restore it cleanly:
 
 | Command | Description |
 |---------|-------------|
@@ -46,6 +46,7 @@ Instead of relying on lossy compression or starting from zero, **claude-code-han
 | `/switch-context <topic>` | Switch between parallel workstreams |
 | `/delete-handoff` | Delete one or more saved handoffs |
 | `/auto-handoff` | Enable/disable auto-handoff or adjust threshold |
+| `/context-doctor` | Diagnose context bloat and optimize token usage |
 
 The workflow becomes: work until context is full → `/handoff` → `/clear` → `/resume` → continue with full context. No degradation, no amnesia. Just clean handoffs.
 
@@ -110,8 +111,7 @@ flowchart TD
     C -->|Yes| E[Present interactive picker]
     E --> F[User selects session]
     F --> G[Load full handoff]
-    G --> H[Read key files for context]
-    H --> I[Present summary + next steps]
+    G --> I[Present summary + next steps]
     I --> J[Wait for user instruction]
 ```
 
@@ -199,8 +199,8 @@ The threshold is configured as a **percentage of your plan's context window**. T
 
 | Preset | Value | Triggers at (200K) | Triggers at (500K) | Best for |
 |--------|-------|---------------------|---------------------|----------|
-| **90% (default)** | `THRESHOLD_PERCENT=90` | 180K tokens | 450K tokens | Maximizing context usage |
-| **80%** | `THRESHOLD_PERCENT=80` | 160K tokens | 400K tokens | Balance between space and safety |
+| **90%** | `THRESHOLD_PERCENT=90` | 180K tokens | 450K tokens | Maximizing context usage |
+| **80% (default)** | `THRESHOLD_PERCENT=80` | 160K tokens | 400K tokens | Balance between space and safety |
 | **75%** | `THRESHOLD_PERCENT=75` | 150K tokens | 375K tokens | Short sessions, early handoff |
 
 The calculation uses real data:
@@ -246,7 +246,7 @@ claude: Which threshold do you want?
 ```bash
 # In .claude/hooks/context-monitor.sh, change the defaults:
 MAX_CONTEXT_TOKENS=${CLAUDE_MAX_CONTEXT:-200000}   # change 200000 to your value
-THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-90}   # change 90 to your value
+THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-80}   # change 80 to your value
 ```
 
 ### Safety Mechanisms
@@ -304,9 +304,10 @@ your-project/
     │   ├── save-handoff.md         ← /save-handoff (wizard)
     │   ├── switch-context.md       ← /switch-context (workstream switch)
     │   ├── delete-handoff.md       ← /delete-handoff (remove handoffs)
-    │   └── auto-handoff.md       ← /auto-handoff (on/off + threshold)
+    │   ├── auto-handoff.md         ← /auto-handoff (on/off + threshold)
+    │   └── context-doctor.md       ← /context-doctor (diagnose bloat)
     ├── rules/
-    │   ├── session-continuity.md   ← Auto-loaded behavioral rules
+    │   ├── session-continuity.md   ← Auto-loaded behavioral rules (lean, ~10 lines)
     │   └── auto-handoff.md         ← Auto-handoff trigger rules
     ├── hooks/
     │   ├── context-monitor.sh      ← Stop hook (monitors context size)
@@ -486,7 +487,7 @@ graph TD
         R["/resume"]
         R --> R1["Lists all sessions"]
         R --> R2["Shows summary per session"]
-        R --> R3["Loads key files"]
+        R --> R3["Lists key files (no read)"]
     end
 
     subgraph "Switch"
@@ -507,18 +508,61 @@ graph TD
 | **When** | Before `/clear` | When you need options | Start of session | Mid-session | Anytime |
 | **Interactive** | No | Yes (wizard) | Yes (picker) | No (with arg) | Yes (wizard) |
 | **Creates files** | Auto | User chooses | No | Auto | Toggle file |
-| **Reads files** | `_active.md` | `_active.md` + `archive/` | All handoffs | `_active.md` + target | Hook config |
+| **Reads files** | `_active.md` | `_active.md` + `archive/` | Handoff only (no key files) | `_active.md` + target | Hook config |
 
 ---
 
+## Context Optimization (v2.1)
+
+Every line in `CLAUDE.md` and `rules/` costs tokens on **every single message**. v2.1 aggressively minimizes the always-on footprint:
+
+| Component | v2.0 | v2.1 | Savings |
+|-----------|------|------|---------|
+| `session-continuity.md` (rule) | 28 lines | 10 lines | -64% |
+| CLAUDE.md section | 5 lines + auto-read | 2 lines, no auto-read | -60% |
+| `/resume` Key File read | 50 lines | 0 (removed) | -100% |
+| Handoff compaction | 200 line limit | 100 line limit, auto-compact | -50% |
+
+**Estimated savings: ~5-6K tokens per message** for projects with moderate CLAUDE.md and rules.
+
+### `/context-doctor` — Diagnose context bloat
+
+Run `/context-doctor` to get a full audit of your context usage:
+
+```
+you:    /context-doctor
+claude: ## Context Health Report
+
+        ### Always-on context (loaded every message)
+        | Source         | Lines | Est. tokens | Status  |
+        |----------------|-------|-------------|---------|
+        | CLAUDE.md      | 260   | ~3900       | BLOATED |
+        | rules/mcp.md   | 176   | ~2640       | BLOATED |
+        | rules/cont.md  | 10    | ~150        | OK      |
+        | **Total**      | **446** | **~6690** | —       |
+
+        ### Recommendations
+        1. Move rules/mcp.md to commands/ (saves ~2640 tokens/message)
+        2. Trim CLAUDE.md: remove code examples on lines 117-145
+        3. Compact handoff: 8 sessions → keep last 3
+
+        Want me to apply any of these optimizations?
+```
+
+### Tips for users
+
+1. **Move reference docs from `rules/` to `commands/`** — Rules are loaded every message. Commands are loaded only when invoked. If a rules file has >50 lines and is mostly reference material, move it to `commands/`.
+2. **Keep CLAUDE.md lean** — Remove generic instructions ("write clean code", error handling patterns, debugging tips). Claude already knows these. Only keep project-specific rules and guardrails.
+3. **Run `/context-doctor` after installing new tools** — MCP rules, agent definitions, and framework configs can bloat context silently.
+
 ## Behavioral Rules
 
-The installer adds a `session-continuity.md` rules file that Claude auto-loads on every session. This gives Claude awareness of the handoff system without you needing to explain it:
+The installer adds a lean `session-continuity.md` rules file (~10 lines) that Claude auto-loads on every session:
 
 - **On session start**: Claude knows `_active.md` exists but doesn't read it unless asked
 - **During work**: Claude proactively reminds you to save after significant milestones
-- **Command awareness**: Claude understands all 6 commands natively
-- **Auto-handoff awareness**: When the context monitor triggers, Claude knows exactly what to do — save the handoff immediately without asking
+- **Command awareness**: Claude understands all 7 commands natively
+- **Auto-handoff awareness**: When the context monitor triggers, Claude saves the handoff immediately
 
 ---
 
@@ -555,7 +599,7 @@ curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff
 ```
 
 The uninstaller:
-- Removes all 6 command files (including legacy `auto-handoff-toggle.md`)
+- Removes all 7 command files (including legacy `auto-handoff-toggle.md`)
 - Removes rules and hooks
 - Cleans hooks from `settings.json` (requires `jq`)
 - Preserves handoff data if sessions exist (won't delete your session history)
@@ -608,6 +652,12 @@ A: Yes. Run `/auto-handoff` and select "Disable", or manually delete `.claude/ho
 
 **Q: What if auto-handoff triggers too early/late?**
 A: Adjust the threshold. If it triggers too early, increase to 95%. If you're running out of context before it triggers, lower to 80% or 75%. Use `/auto-handoff` to change it interactively.
+
+**Q: My context fills up too fast. What can I do?**
+A: Run `/context-doctor` to audit your always-on context (CLAUDE.md + rules/). Common fixes: move large rules files to commands/ (on-demand loading), trim generic boilerplate from CLAUDE.md, and compact old handoff sessions. See the [Context Optimization](#context-optimization-v21) section.
+
+**Q: What changed in v2.1?**
+A: v2.1 focuses on context efficiency: leaner rules file (28→10 lines), no auto-read on session start (saves double reading), `/resume` no longer reads Key Files by default (saves ~50 lines), handoff compaction at 3 sessions (100 line target), and new `/context-doctor` diagnostic command.
 
 ---
 

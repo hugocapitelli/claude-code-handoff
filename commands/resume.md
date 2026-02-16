@@ -27,23 +27,18 @@ Header: "Handoff"
 Once the user selects, read the full handoff file and extract:
 - Active Workstream
 - Active Agent(s)
-- What Was Done (last session summary)
+- What Was Done (last session summary only)
 - What's Next (pending items)
-- Key Files
+- Key Files (list only — do NOT read the files)
 - Decisions Registry (if any)
 
-### Step 4: Refresh context
-
-If **Key Files** lists a main document (Current Document field), read the first 50 lines of it.
-
-### Step 5: Present context
+### Step 4: Present context
 
 ```
 ## Resuming session
 
 **Workstream:** [name]
 **Agent(s):** [active agents]
-**Document:** [main file]
 **Last updated:** [date]
 
 ### Last session summary
@@ -57,7 +52,7 @@ If **Key Files** lists a main document (Current Document field), read the first 
 What would you like to do?
 ```
 
-### Step 6: Wait
+### Step 5: Wait
 
 Wait for user instruction before proceeding.
 
@@ -70,4 +65,5 @@ If `$ARGUMENTS` is provided (e.g., `/resume auth-refactor`), skip the wizard:
 ## Important
 - Do NOT activate any agent automatically — let the user decide
 - Do NOT start working — only present context and wait
+- Do NOT read Key Files — just list them. The user can ask to read specific files when needed
 - If the handoff references an agent (e.g., @architect), mention it but don't activate

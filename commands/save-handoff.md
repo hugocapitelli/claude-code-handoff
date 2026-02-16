@@ -125,11 +125,18 @@ If `$ARGUMENTS` is provided:
 - If it matches an existing archive name: update that specific archive file directly (skip wizard)
 - Otherwise: treat as the name for a new context (skip wizard, go to "Save as new context" flow)
 
+## Compaction Rule
+
+When a handoff exceeds 3 session entries in "What Was Done":
+1. Keep the **last 3 sessions** in full detail
+2. Merge all older sessions into a single **"Prior Sessions Summary (1-N)"** section with 1-2 bullet points each
+3. Target: keep the entire handoff under **100 lines**
+4. The Decisions Registry is NEVER compacted — all decisions are preserved
+
 ## Important
 - NEVER delete or overwrite without archiving first — always move to archive/
-- PRESERVE session history — append, don't replace
+- PRESERVE session history — append, don't replace (but compact older sessions)
 - Be PRECISE — file paths, decision IDs, specific changes
 - Be ACTIONABLE — someone reading cold should know exactly what to do
-- Keep CONCISE — target <200 lines per handoff
-- If a handoff exceeds 300 lines, summarize older sessions into "Prior Sessions Summary"
+- Keep CONCISE — target <100 lines per handoff
 - Slug derivation: lowercase, trim, replace spaces/special chars with hyphens, max 40 chars

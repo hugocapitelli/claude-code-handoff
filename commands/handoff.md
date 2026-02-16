@@ -109,10 +109,25 @@ This command exists because:
 2. **Context-aware** — it appends to the active handoff if the workstream matches, or creates a new one if it doesn't.
 3. **Pre-clear workflow** — the natural flow is: work → `/handoff` → `/clear` → `/resume`.
 
+## Compaction Rule
+
+When a handoff exceeds 3 session entries in "What Was Done":
+1. Keep the **last 3 sessions** in full detail
+2. Merge all older sessions into a single **"Prior Sessions Summary (1-N)"** section with 1-2 bullet points each
+3. Example:
+```markdown
+### Prior Sessions Summary (1-5)
+- Sessions 1-2: Initial setup, D1-D4 decided
+- Session 3: Refactored auth module
+- Sessions 4-5: API integration, E2E tests added
+```
+4. Target: keep the entire handoff under **100 lines**
+5. The Decisions Registry is NEVER compacted — all decisions are preserved
+
 ## Important
 - Be THOROUGH — extract everything relevant from the conversation
 - Be PRECISE — file paths, specific changes, exact error messages
 - Be ACTIONABLE — next steps should be specific enough to execute cold
 - NEVER delete existing handoff data — always append or archive
-- Keep under 200 lines — summarize older sessions if handoff grows large
+- Keep under 100 lines — compact older sessions aggressively
 - If conversation is very short or trivial, still save (even a one-liner is better than nothing)
