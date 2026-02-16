@@ -36,7 +36,7 @@ Either way, you lose. Auto-compact gives you a degraded Claude that forgets. Man
 
 ## The Solution
 
-Instead of relying on lossy compression or starting from zero, **claude-code-handoff** gives Claude **structured persistent memory** — 5 slash commands that capture exactly what matters and restore it cleanly:
+Instead of relying on lossy compression or starting from zero, **claude-code-handoff** gives Claude **structured persistent memory** — 6 slash commands that capture exactly what matters and restore it cleanly:
 
 | Command | Description |
 |---------|-------------|
@@ -49,7 +49,7 @@ Instead of relying on lossy compression or starting from zero, **claude-code-han
 
 The workflow becomes: work until context is full → `/handoff` → `/clear` → `/resume` → continue with full context. No degradation, no amnesia. Just clean handoffs.
 
-**New in v1.4:** Auto-handoff monitors your context usage and **automatically triggers a handoff** when the transcript reaches 90% capacity — so you never forget to save.
+**Auto-handoff** (since v1.4) monitors your context usage and **automatically triggers a handoff** when the transcript reaches a configurable threshold (default: **90%**) — so you never forget to save. Since v1.5, the threshold is configured as a **percentage of context** instead of fixed bytes, making it intuitive and portable across different setups.
 
 Session state is stored in `.claude/handoffs/` (gitignored) — each developer keeps their own context, no conflicts.
 
@@ -62,7 +62,7 @@ cd your-project
 npx claude-code-handoff
 ```
 
-That's it. Open Claude Code and your 5 commands are ready.
+That's it. Open Claude Code and your 6 commands are ready. Auto-handoff is enabled by default at 90%.
 
 ---
 
@@ -157,37 +157,87 @@ graph TD
 
 ## Auto-Handoff (Context Monitor)
 
-The biggest risk with handoffs is **forgetting to save**. Auto-handoff eliminates this by monitoring your transcript size and forcing a save when context is running low.
+The biggest risk with handoffs is **forgetting to save**. You're deep in a task, context fills up, and everything is lost. Auto-handoff eliminates this by monitoring your transcript size and **forcing Claude to save the handoff** before it's too late.
 
 ### How It Works
+
+A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) runs after every Claude response (Stop event). It checks the transcript file size against a configurable threshold. When the threshold is exceeded, it **blocks** Claude's next action and forces an immediate handoff save.
 
 ```mermaid
 flowchart TD
     A[Claude responds] --> B[Stop hook fires]
-    B --> C{Transcript > 90%?}
+    B --> C["Transcript size > threshold?"]
     C -->|No| D[Continue normally]
-    C -->|Yes| E{Already triggered?}
+    C -->|Yes| E{Already triggered this session?}
     E -->|Yes| D
-    E -->|No| F[Create flag file]
-    F --> G["Block: force handoff save"]
-    G --> H[Claude saves _active.md]
+    E -->|No| F[Create flag file in /tmp]
+    F --> G["Block Claude: force handoff save"]
+    G --> H[Claude writes _active.md]
     H --> I["User: /clear → /resume"]
 ```
 
-- **Detection**: Measures transcript file size (default 90% of ~500KB max context)
-- **One-shot**: Uses a flag file in `/tmp` to prevent infinite loops — triggers only once per session
-- **Configurable**: Adjust threshold % via `CLAUDE_CONTEXT_THRESHOLD` env var or `/auto-handoff`
-- **Disableable**: Run `/auto-handoff` to turn it off
+### Threshold Configuration
 
-### Configuration
+The threshold is configured as a **percentage of the estimated maximum context** (~500KB transcript). This makes it intuitive — you think in terms of "how full is my context?" rather than raw byte counts.
 
-```bash
-# Change threshold (default: 90% of context)
-export CLAUDE_CONTEXT_THRESHOLD=80  # trigger at 80% instead
+| Preset | Value | Triggers at | Best for |
+|--------|-------|-------------|----------|
+| **90% (default)** | `THRESHOLD_PERCENT=90` | ~450KB | Maximizing context usage |
+| **80%** | `THRESHOLD_PERCENT=80` | ~400KB | Balance between space and safety |
+| **75%** | `THRESHOLD_PERCENT=75` | ~375KB | Short sessions, early handoff |
 
-# Or use the interactive toggle
-/auto-handoff
+The calculation is straightforward:
 ```
+MAX_CONTEXT_SIZE = 500000  (500KB — estimated max transcript)
+THRESHOLD = MAX_CONTEXT_SIZE × THRESHOLD_PERCENT / 100
+```
+
+### Three Ways to Configure
+
+**1. Environment variable** (per-session override):
+```bash
+# Trigger at 80% instead of the default
+export CLAUDE_CONTEXT_THRESHOLD=80
+```
+
+**2. Interactive wizard** (`/auto-handoff` command):
+```
+you:    /auto-handoff
+claude: Auto-handoff is ENABLED (threshold: 90%). What would you like to do?
+        1. Disable
+        2. Adjust threshold
+
+you:    [selects "Adjust threshold"]
+claude: Which threshold do you want?
+        1. 90% (Recommended) — Default, maximizes context usage
+        2. 80% — Balance between space and safety
+        3. 75% — Short sessions, saves handoff earlier
+        4. Other — Type a custom value
+```
+
+**3. Edit the script directly**:
+```bash
+# In .claude/hooks/context-monitor.sh, change the default:
+THRESHOLD_PERCENT=${CLAUDE_CONTEXT_THRESHOLD:-90}  # change 90 to your value
+```
+
+### Safety Mechanisms
+
+- **One-shot trigger**: A flag file in `/tmp` (per session ID) prevents infinite loops — the hook triggers exactly once per session, even if Claude's handoff response pushes the transcript further
+- **Session cleanup**: A `SessionStart` hook automatically cleans up stale flag files older than 24 hours
+- **Disable switch**: Create `.claude/hooks/.auto-handoff-disabled` to completely disable the monitor (or use `/auto-handoff` to toggle)
+- **Non-destructive**: The hook only blocks and instructs — it never modifies files directly. Claude performs the actual handoff save
+
+### What Happens When It Triggers
+
+When the threshold is hit, Claude receives a block message like:
+
+> ⚠️ AUTO-HANDOFF: Context reached 90% of the limit. You MUST save the handoff NOW.
+
+Claude will then:
+1. Analyze the full conversation
+2. Write the handoff to `.claude/handoffs/_active.md`
+3. Tell you: "Handoff saved automatically. Use `/clear` then `/resume` to continue."
 
 ---
 
@@ -226,7 +276,7 @@ your-project/
     │   ├── save-handoff.md         ← /save-handoff (wizard)
     │   ├── switch-context.md       ← /switch-context (workstream switch)
     │   ├── delete-handoff.md       ← /delete-handoff (remove handoffs)
-    │   └── auto-handoff.md  ← /auto-handoff (on/off)
+    │   └── auto-handoff.md       ← /auto-handoff (on/off + threshold)
     ├── rules/
     │   ├── session-continuity.md   ← Auto-loaded behavioral rules
     │   └── auto-handoff.md         ← Auto-handoff trigger rules
@@ -296,6 +346,45 @@ claude: Where should this session's handoff be saved?
         1. Update active (auth-refactor)
         2. Save as new context
         3. Replace active
+```
+
+### Auto-handoff in action
+
+```
+you:    [working normally on a long session...]
+claude: [responds to your request]
+
+        ── context reaches 90% ──
+
+claude: ⚠️ AUTO-HANDOFF: Context reached 90% of the limit.
+        Handoff saved automatically.
+        Use /clear then /resume to continue.
+
+you:    /clear
+
+        ── new session ──
+
+you:    /resume
+claude: ## Resuming session
+        [full context restored, continues exactly where you left off]
+```
+
+### Adjusting auto-handoff threshold
+
+```
+you:    /auto-handoff
+claude: Auto-handoff is ENABLED (threshold: 90%). What would you like to do?
+        1. Disable
+        2. Adjust threshold
+
+you:    [selects "Adjust threshold"]
+claude: Which threshold do you want?
+        1. 90% (Recommended)
+        2. 80%
+        3. 75%
+
+you:    [types "95" via Other]
+claude: ✅ Threshold updated to 95%.
 ```
 
 ---
@@ -399,7 +488,8 @@ The installer adds a `session-continuity.md` rules file that Claude auto-loads o
 
 - **On session start**: Claude knows `_active.md` exists but doesn't read it unless asked
 - **During work**: Claude proactively reminds you to save after significant milestones
-- **Command awareness**: Claude understands all 5 commands natively
+- **Command awareness**: Claude understands all 6 commands natively
+- **Auto-handoff awareness**: When the context monitor triggers, Claude knows exactly what to do — save the handoff immediately without asking
 
 ---
 
@@ -421,9 +511,10 @@ curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff
 
 This will:
 - Overwrite command files with the latest versions
-- Update the rules file
-- Remove legacy Portuguese commands if present (`retomar`, `salvar-handoff`, `trocar-contexto`)
-- **Not touch** your `.claude/handoffs/` data
+- Update rules and hooks to latest
+- Ensure hooks are configured in `settings.json`
+- Remove legacy files if present (`auto-handoff-toggle.md`, Portuguese commands)
+- **Not touch** your `.claude/handoffs/` data or custom threshold settings
 
 ---
 
@@ -435,16 +526,18 @@ curl -fsSL https://raw.githubusercontent.com/eximIA-Ventures/claude-code-handoff
 ```
 
 The uninstaller:
-- Removes all 5 command files
-- Removes the rules file
+- Removes all 6 command files (including legacy `auto-handoff-toggle.md`)
+- Removes rules and hooks
+- Cleans hooks from `settings.json` (requires `jq`)
 - Preserves handoff data if sessions exist (won't delete your session history)
 - Cleans `.gitignore` entries
 - Leaves `CLAUDE.md` unchanged (remove the section manually if desired)
 
 Or remove manually:
 ```bash
-rm .claude/commands/{handoff,resume,save-handoff,switch-context,delete-handoff}.md
-rm .claude/rules/session-continuity.md
+rm .claude/commands/{handoff,resume,save-handoff,switch-context,delete-handoff,auto-handoff}.md
+rm .claude/rules/{session-continuity,auto-handoff}.md
+rm .claude/hooks/{context-monitor,session-cleanup}.sh
 rm -rf .claude/handoffs/  # ⚠️ deletes all session history
 ```
 
@@ -477,6 +570,15 @@ A: The commands automatically summarize older sessions into a "Prior Sessions Su
 
 **Q: Can I edit the handoff files manually?**
 A: Absolutely. They're plain markdown. You can add notes, reorder next steps, or clean up history.
+
+**Q: How does the auto-handoff threshold work?**
+A: The threshold is a percentage of the estimated maximum transcript size (~500KB). At 90% (default), the hook triggers when the transcript reaches ~450KB. You can set any value from 1-100 via env var (`CLAUDE_CONTEXT_THRESHOLD=80`) or the `/auto-handoff` command.
+
+**Q: Can I disable auto-handoff?**
+A: Yes. Run `/auto-handoff` and select "Disable", or manually create the file `.claude/hooks/.auto-handoff-disabled`. Delete the file to re-enable.
+
+**Q: What if auto-handoff triggers too early/late?**
+A: Adjust the threshold. If it triggers too early, increase to 95%. If you're running out of context before it triggers, lower to 80% or 75%. Use `/auto-handoff` to change it interactively.
 
 ---
 
