@@ -4,13 +4,14 @@ Session continuity for [Claude Code](https://docs.anthropic.com/en/docs/claude-c
 
 ## What it does
 
-Adds 3 slash commands to any Claude Code project:
+Adds 4 slash commands to any Claude Code project:
 
 | Command | Description |
 |---------|-------------|
-| `/retomar` | Resume from a saved session (interactive wizard) |
-| `/salvar-handoff` | Save current session state before clearing |
-| `/trocar-contexto <topic>` | Switch between parallel workstreams |
+| `/handoff` | Auto-save session state (no wizard, just save and go) |
+| `/resume` | Resume from a saved session (interactive wizard) |
+| `/save-handoff` | Save session state with options (interactive wizard) |
+| `/switch-context <topic>` | Switch between parallel workstreams |
 
 Session state is stored in `.claude/handoffs/` (gitignored by default) so each developer keeps their own context.
 
@@ -44,9 +45,10 @@ cd your-project
 your-project/
 └── .claude/
     ├── commands/
-    │   ├── retomar.md            # /retomar command
-    │   ├── salvar-handoff.md     # /salvar-handoff command
-    │   └── trocar-contexto.md    # /trocar-contexto command
+    │   ├── handoff.md            # /handoff command (auto-save)
+    │   ├── resume.md             # /resume command
+    │   ├── save-handoff.md       # /save-handoff command
+    │   └── switch-context.md     # /switch-context command
     ├── rules/
     │   └── session-continuity.md # Auto-loaded rules for Claude
     └── handoffs/                 # Session state (gitignored)
@@ -60,18 +62,25 @@ The installer also:
 
 ## Usage
 
-### Save before clearing
+### Quick save before clearing
 
 ```
-> /salvar-handoff
-# Claude saves current context to .claude/handoffs/_active.md
+> /handoff
+# Claude auto-saves current context to .claude/handoffs/_active.md
 > /clear
+```
+
+### Save with options
+
+```
+> /save-handoff
+# Interactive wizard: update active, save as new context, or replace
 ```
 
 ### Resume next session
 
 ```
-> /retomar
+> /resume
 # Interactive wizard shows available sessions
 # Select one → Claude loads full context and shows next steps
 ```
@@ -79,7 +88,7 @@ The installer also:
 ### Switch workstreams
 
 ```
-> /trocar-contexto auth-refactor
+> /switch-context auth-refactor
 # Archives current session, loads auth-refactor context
 ```
 
@@ -94,7 +103,9 @@ The handoff file (`.claude/handoffs/_active.md`) captures:
 - **Key Files** — important files for context reload
 - **Decisions Registry** — architectural decisions made
 
-When you `/retomar`, Claude reads this file and presents a summary so you can continue exactly where you left off.
+When you `/resume`, Claude reads this file and presents a summary so you can continue exactly where you left off.
+
+The `_active.md` file acts like `HEAD` in git — it points to your current workstream. The `archive/` folder holds paused workstreams you can switch to anytime with `/switch-context`.
 
 ## Uninstall
 
@@ -105,7 +116,7 @@ curl -fsSL https://raw.githubusercontent.com/hugocapitelli/claude-code-handoff/m
 
 Or manually remove:
 ```bash
-rm -rf .claude/commands/retomar.md .claude/commands/salvar-handoff.md .claude/commands/trocar-contexto.md
+rm -rf .claude/commands/handoff.md .claude/commands/resume.md .claude/commands/save-handoff.md .claude/commands/switch-context.md
 rm -rf .claude/rules/session-continuity.md
 rm -rf .claude/handoffs/
 ```

@@ -28,6 +28,11 @@ fi
 
 # 1. Remove commands
 echo -e "  ${YELLOW}[1/4]${NC} Removing commands..."
+rm -f "$CLAUDE_DIR/commands/handoff.md"
+rm -f "$CLAUDE_DIR/commands/resume.md"
+rm -f "$CLAUDE_DIR/commands/save-handoff.md"
+rm -f "$CLAUDE_DIR/commands/switch-context.md"
+# Also remove legacy Portuguese commands if present
 rm -f "$CLAUDE_DIR/commands/retomar.md"
 rm -f "$CLAUDE_DIR/commands/salvar-handoff.md"
 rm -f "$CLAUDE_DIR/commands/trocar-contexto.md"

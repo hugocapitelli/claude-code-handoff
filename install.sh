@@ -1,5 +1,5 @@
 #!/bin/bash
-# claude-handoff — Session continuity for Claude Code
+# claude-code-handoff — Session continuity for Claude Code
 # Install: curl -fsSL https://raw.githubusercontent.com/hugocapitelli/claude-code-handoff/main/install.sh | bash
 #
 # Or clone and run:
@@ -22,7 +22,7 @@ CLAUDE_DIR="$PROJECT_DIR/.claude"
 
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}  claude-handoff — Session Continuity${NC}"
+echo -e "${CYAN}  claude-code-handoff — Session Continuity${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo -e "  Project: ${GREEN}$PROJECT_DIR${NC}"
@@ -45,28 +45,29 @@ download_file() {
 }
 
 # 1. Create directories
-echo -e "  ${YELLOW}[1/6]${NC} Creating directories..."
+echo -e "  ${YELLOW}[1/7]${NC} Creating directories..."
 mkdir -p "$CLAUDE_DIR/commands"
 mkdir -p "$CLAUDE_DIR/rules"
 mkdir -p "$CLAUDE_DIR/handoffs/archive"
 
 # 2. Download/copy commands
-echo -e "  ${YELLOW}[2/6]${NC} Installing commands..."
-download_file "commands/retomar.md" "$CLAUDE_DIR/commands/retomar.md"
-download_file "commands/salvar-handoff.md" "$CLAUDE_DIR/commands/salvar-handoff.md"
-download_file "commands/trocar-contexto.md" "$CLAUDE_DIR/commands/trocar-contexto.md"
+echo -e "  ${YELLOW}[2/7]${NC} Installing commands..."
+download_file "commands/resume.md" "$CLAUDE_DIR/commands/resume.md"
+download_file "commands/save-handoff.md" "$CLAUDE_DIR/commands/save-handoff.md"
+download_file "commands/switch-context.md" "$CLAUDE_DIR/commands/switch-context.md"
+download_file "commands/handoff.md" "$CLAUDE_DIR/commands/handoff.md"
 
 # 3. Download/copy rules
-echo -e "  ${YELLOW}[3/6]${NC} Installing rules..."
+echo -e "  ${YELLOW}[3/7]${NC} Installing rules..."
 download_file "rules/session-continuity.md" "$CLAUDE_DIR/rules/session-continuity.md"
 
 # 4. Create initial _active.md if not exists
 if [ ! -f "$CLAUDE_DIR/handoffs/_active.md" ]; then
-  echo -e "  ${YELLOW}[4/6]${NC} Creating initial handoff..."
+  echo -e "  ${YELLOW}[4/7]${NC} Creating initial handoff..."
   cat > "$CLAUDE_DIR/handoffs/_active.md" << 'HANDOFF'
 # Session Handoff
 
-> No active session yet. Use `/salvar-handoff` to save your first session state.
+> No active session yet. Use `/handoff` or `/save-handoff` to save your first session state.
 
 ## Last Updated
 (not started)
@@ -90,11 +91,11 @@ if [ ! -f "$CLAUDE_DIR/handoffs/_active.md" ]; then
 (none)
 HANDOFF
 else
-  echo -e "  ${YELLOW}[4/6]${NC} Handoff already exists, keeping it"
+  echo -e "  ${YELLOW}[4/7]${NC} Handoff already exists, keeping it"
 fi
 
 # 5. Add to .gitignore
-echo -e "  ${YELLOW}[5/6]${NC} Updating .gitignore..."
+echo -e "  ${YELLOW}[5/7]${NC} Updating .gitignore..."
 GITIGNORE="$PROJECT_DIR/.gitignore"
 if [ -f "$GITIGNORE" ]; then
   if ! grep -q ".claude/handoffs/" "$GITIGNORE" 2>/dev/null; then
@@ -108,8 +109,14 @@ else
 fi
 
 # 6. Add to CLAUDE.md
-echo -e "  ${YELLOW}[6/6]${NC} Updating CLAUDE.md..."
+echo -e "  ${YELLOW}[6/7]${NC} Updating CLAUDE.md..."
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
+CONTINUITY_BLOCK='## Session Continuity (MANDATORY)
+
+At the START of every session, read `.claude/handoffs/_active.md` to recover context from prior sessions.
+During work, update the handoff proactively after significant milestones.
+Use `/handoff` before `/clear`. Use `/resume` to pick up. Use `/switch-context <topic>` to switch workstreams.'
+
 if [ -f "$CLAUDE_MD" ]; then
   if ! grep -q "Session Continuity" "$CLAUDE_MD" 2>/dev/null; then
     TEMP_FILE=$(mktemp)
@@ -121,7 +128,7 @@ if [ -f "$CLAUDE_MD" ]; then
         print ""
         print "At the START of every session, read `.claude/handoffs/_active.md` to recover context from prior sessions."
         print "During work, update the handoff proactively after significant milestones."
-        print "Use `/salvar-handoff` before `/clear`. Use `/retomar` to resume. Use `/trocar-contexto <topic>` to switch workstreams."
+        print "Use `/handoff` before `/clear`. Use `/resume` to pick up. Use `/switch-context <topic>` to switch workstreams."
         print ""
         done=1
         next
@@ -138,22 +145,34 @@ else
 
 At the START of every session, read `.claude/handoffs/_active.md` to recover context from prior sessions.
 During work, update the handoff proactively after significant milestones.
-Use `/salvar-handoff` before `/clear`. Use `/retomar` to resume. Use `/trocar-contexto <topic>` to switch workstreams.
+Use `/handoff` before `/clear`. Use `/resume` to pick up. Use `/switch-context <topic>` to switch workstreams.
 CLAUDEMD
 fi
 
+# 7. Summary
+echo -e "  ${YELLOW}[7/7]${NC} Verifying installation..."
+INSTALLED=0
+for f in resume.md save-handoff.md switch-context.md handoff.md; do
+  [ -f "$CLAUDE_DIR/commands/$f" ] && INSTALLED=$((INSTALLED + 1))
+done
+
 echo ""
-echo -e "${GREEN}  Installed successfully!${NC}"
+if [ "$INSTALLED" -eq 4 ]; then
+  echo -e "${GREEN}  Installed successfully! ($INSTALLED/4 commands)${NC}"
+else
+  echo -e "${YELLOW}  Partial install: $INSTALLED/4 commands${NC}"
+fi
 echo ""
 echo -e "  Commands available:"
-echo -e "    ${CYAN}/retomar${NC}             Resume with wizard"
-echo -e "    ${CYAN}/salvar-handoff${NC}      Save session state"
-echo -e "    ${CYAN}/trocar-contexto${NC}     Switch workstream"
+echo -e "    ${CYAN}/handoff${NC}              Auto-save session (no wizard)"
+echo -e "    ${CYAN}/resume${NC}               Resume with wizard"
+echo -e "    ${CYAN}/save-handoff${NC}         Save session state (wizard)"
+echo -e "    ${CYAN}/switch-context${NC}       Switch workstream"
 echo ""
 echo -e "  Files:"
-echo -e "    .claude/commands/     3 command files"
+echo -e "    .claude/commands/     4 command files"
 echo -e "    .claude/rules/        session-continuity.md"
 echo -e "    .claude/handoffs/     session state (gitignored)"
 echo ""
-echo -e "  ${YELLOW}Start Claude Code and use /retomar to begin.${NC}"
+echo -e "  ${YELLOW}Start Claude Code and use /resume to begin.${NC}"
 echo ""

@@ -1,4 +1,4 @@
-# Salvar Handoff
+# Save Handoff
 
 Save the current session state for future resumption.
 
@@ -24,44 +24,44 @@ Use the AskUserQuestion tool to ask where to save.
 
 **Present options:**
 
-Question: "Onde salvar o handoff desta sessao?"
-Header: "Destino"
+Question: "Where should this session's handoff be saved?"
+Header: "Target"
 
 Options (build dynamically):
-1. **Label:** "Atualizar ativo ([workstream name])" — **Description:** "Adiciona esta sessao ao handoff ativo atual. Use quando esta trabalhando no mesmo contexto."
-2. **Label:** "Salvar como novo contexto" — **Description:** "Cria um novo handoff separado. Use quando esta trabalhando em algo diferente do contexto ativo."
-3. **Label:** "Substituir ativo" — **Description:** "Descarta o handoff ativo e cria um novo com esta sessao. Use quando o contexto ativo esta obsoleto."
+1. **Label:** "Update active ([workstream name])" — **Description:** "Append this session to the current active handoff. Use when working on the same context."
+2. **Label:** "Save as new context" — **Description:** "Create a separate handoff. Use when working on something different from the active context."
+3. **Label:** "Replace active" — **Description:** "Discard the active handoff and create a new one with this session. Use when the active context is obsolete."
 
 If `_active.md` does NOT exist or is the default placeholder, show only:
-1. **Label:** "Criar handoff" — **Description:** "Cria o primeiro handoff para este projeto."
-2. **Label:** "Criar com nome especifico" — **Description:** "Cria handoff com nome customizado para organizar por tema."
+1. **Label:** "Create handoff" — **Description:** "Create the first handoff for this project."
+2. **Label:** "Create with specific name" — **Description:** "Create handoff with a custom name to organize by topic."
 
 ### Step 3: Execute based on choice
 
-#### Choice: "Atualizar ativo"
+#### Choice: "Update active"
 1. Read `.claude/handoffs/_active.md`
 2. Append new session entry to "What Was Done" (preserve history)
 3. Update "What's Next", "Key Files", "Decisions Registry", "Last Updated"
 4. Write back to `.claude/handoffs/_active.md`
 
-#### Choice: "Salvar como novo contexto"
+#### Choice: "Save as new context"
 1. Ask the user for a name using AskUserQuestion:
-   - Question: "Nome do contexto (sera o nome do arquivo)?"
-   - Header: "Nome"
-   - Options: suggest 2-3 slugs based on what was discussed (e.g., "ws2-course-creator", "bugfix-auth-flow"), plus "Other" for custom input
+   - Question: "Context name (will be the filename)?"
+   - Header: "Name"
+   - Options: suggest 2-3 slugs based on what was discussed (e.g., "auth-refactor", "bugfix-login"), plus "Other" for custom input
 2. If `_active.md` has content, move it to `archive/{current-slug}.md` first
 3. Create new `.claude/handoffs/_active.md` with this session's data
 4. Also save a copy to `archive/{chosen-name}.md`
 
-#### Choice: "Substituir ativo"
+#### Choice: "Replace active"
 1. If `_active.md` has content, move it to `archive/{current-slug}.md` (never lose data)
 2. Create fresh `.claude/handoffs/_active.md` with only this session's data
 
-#### Choice: "Criar handoff" (first time)
+#### Choice: "Create handoff" (first time)
 1. Create `.claude/handoffs/_active.md` with this session's data
 
-#### Choice: "Criar com nome especifico" (first time)
-1. Ask for name (same as "Salvar como novo contexto")
+#### Choice: "Create with specific name" (first time)
+1. Ask for name (same as "Save as new context")
 2. Create `.claude/handoffs/_active.md` with this session's data
 3. Also save copy to `archive/{chosen-name}.md`
 
@@ -113,17 +113,17 @@ Use this structure for the handoff content:
 ### Step 5: Confirm
 
 ```
-Handoff salvo em [path]
+Handoff saved to [path]
 - [1-line summary of what was recorded]
-- Proximos passos: [count] itens pendentes
-- Contextos disponiveis: [list of all handoff names]
+- Next steps: [count] pending items
+- Available contexts: [list of all handoff names]
 ```
 
 ## Shortcut
 
 If `$ARGUMENTS` is provided:
 - If it matches an existing archive name: update that specific archive file directly (skip wizard)
-- Otherwise: treat as the name for a new context (skip wizard, go to "Salvar como novo contexto" flow)
+- Otherwise: treat as the name for a new context (skip wizard, go to "Save as new context" flow)
 
 ## Important
 - NEVER delete or overwrite without archiving first — always move to archive/

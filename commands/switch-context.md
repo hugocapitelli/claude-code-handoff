@@ -1,13 +1,13 @@
-# Trocar Contexto
+# Switch Context
 
 Switch between workstreams by archiving the current handoff and loading another.
 
 ## Instructions
 
-**Argument required:** `$ARGUMENTS` must contain the target workstream name (e.g., `ws1-motor-socratico`).
+**Argument required:** `$ARGUMENTS` must contain the target workstream name (e.g., `auth-refactor`).
 
 If no argument provided, list available contexts and ask the user to choose:
-1. Read `.claude/handoffs/_active.md` and show its workstream name as "(ativo)"
+1. Read `.claude/handoffs/_active.md` and show its workstream name as "(active)"
 2. List all `.md` files in `.claude/handoffs/archive/` as available contexts
 3. Present as numbered list and wait for selection
 
@@ -15,8 +15,8 @@ If no argument provided, list available contexts and ask the user to choose:
 
 1. **Read the current active handoff** at `.claude/handoffs/_active.md`
    - Extract the workstream name from "## Active Workstream"
-   - Derive a slug from it (lowercase, spaces→hyphens, no special chars)
-   - Example: "WS2: Course Creator" → `ws2-course-creator`
+   - Derive a slug from it (lowercase, spaces to hyphens, no special chars)
+   - Example: "Auth Refactor" → `auth-refactor`
 
 2. **Archive the current handoff:**
    - Copy `.claude/handoffs/_active.md` → `.claude/handoffs/archive/{slug}.md`
@@ -30,15 +30,15 @@ If no argument provided, list available contexts and ask the user to choose:
 4. **Present the switch result:**
 
 ```
-## Contexto trocado
+## Context switched
 
-**De:** [previous workstream] → arquivado em `.claude/handoffs/archive/{slug}.md`
-**Para:** [new workstream]
+**From:** [previous workstream] → archived to `.claude/handoffs/archive/{slug}.md`
+**To:** [new workstream]
 
-### Estado do novo contexto
+### New context state
 [summary from the loaded handoff — What Was Done + What's Next]
 
-O que deseja fazer?
+What would you like to do?
 ```
 
 5. **Wait for user instruction.**
@@ -46,14 +46,14 @@ O que deseja fazer?
 ## Examples
 
 ```
-/trocar-contexto ws1-motor-socratico
-→ Archives current WS2 handoff
-→ Loads WS1 handoff
-→ Shows WS1 context
-
-/trocar-contexto nova-feature-auth
+/switch-context auth-refactor
 → Archives current handoff
-→ No archive found for "nova-feature-auth"
+→ Loads auth-refactor handoff
+→ Shows auth-refactor context
+
+/switch-context new-feature-payments
+→ Archives current handoff
+→ No archive found for "new-feature-payments"
 → Creates fresh handoff with that name
 → Shows empty context, asks what to work on
 ```
